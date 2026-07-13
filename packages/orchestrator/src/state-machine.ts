@@ -24,11 +24,11 @@ export function assertTransition(input: { from: WorkflowState; to: WorkflowState
   if (input.destructive && input.actor !== "user") throw new AppError("MODEL_DESTRUCTIVE_ACTION_FORBIDDEN", "Une opération destructive ne peut être lancée que par un humain", 403);
 }
 
-export function automaticNextState(state: WorkflowState, input: { reviewApproved?: boolean; testsPassed?: boolean; target?: "local" | "remote" } = {}): WorkflowState | null {
+export function automaticNextState(state: WorkflowState, input: { reviewApproved?: boolean; testsPassed?: boolean; target?: "local" | "remote"; stagingValidationPassed?: boolean } = {}): WorkflowState | null {
   const next: Partial<Record<WorkflowState, WorkflowState>> = { INTAKE: "WORDPRESS_SNAPSHOT", WORDPRESS_SNAPSHOT: "SPECIFICATION_BY_CLAUDE", SPECIFICATION_BY_CLAUDE: "TECHNICAL_PLAN_BY_CODEX", TECHNICAL_PLAN_BY_CODEX: "PLAN_REVIEW_BY_CLAUDE", PLAN_REVIEW_BY_CLAUDE: "WAITING_FOR_PLAN_APPROVAL", IMPLEMENTATION_BY_CODEX: "AUTOMATED_TESTS", STAGING_DEPLOYMENT: "STAGING_VALIDATION", PRODUCTION_DEPLOYMENT: "COMPLETED" };
   if (state === "AUTOMATED_TESTS") return input.testsPassed === false ? "FIXES_BY_CODEX" : "REVIEW_BY_CLAUDE";
   if (state === "REVIEW_BY_CLAUDE") return input.reviewApproved === false ? "FIXES_BY_CODEX" : "WAITING_FOR_DEPLOYMENT_APPROVAL";
   if (state === "FIXES_BY_CODEX") return "AUTOMATED_TESTS";
-  if (state === "STAGING_VALIDATION") return input.target === "remote" ? "PRODUCTION_DEPLOYMENT" : "COMPLETED";
+  if (state === "STAGING_VALIDATION") return input.stagingValidationPassed === false ? "FIXES_BY_CODEX" : input.target === "remote" ? "PRODUCTION_DEPLOYMENT" : "COMPLETED";
   return next[state] ?? null;
 }
