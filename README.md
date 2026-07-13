@@ -82,6 +82,7 @@ docs/                     Architecture, API, sécurité et exploitation
 - [API interne](docs/API.md)
 - [Sécurité](docs/SECURITY.md)
 - [Déploiement](docs/DEPLOYMENT.md)
+- [Déploiement Hostinger](docs/HOSTINGER.md)
 - [Restauration](docs/RESTORE.md)
 - [Limites du MVP](docs/LIMITS.md)
 
