@@ -8,7 +8,7 @@ Les secrets sont isolés dans `IntegrationSecret`, chiffrés par AES‑256‑GCM
 
 Les URL WordPress acceptent seulement HTTP(S), interdisent les identifiants dans l’URL, exigent HTTPS en production, résolvent DNS avant l’appel et après chaque redirection, bloquent localhost, réseaux privés, link-local, multicast et métadonnées cloud. Les cibles privées exigent à la fois une option du site et `ENABLE_PRIVATE_NETWORK_TARGETS=true`. Les appels ont un timeout, trois redirections maximum et une limite de taille.
 
-Limite connue : la résolution DNS de contrôle (`validateRemoteUrl`) et l’appel `fetch` réel utilisent tous deux le nom d’hôte, sans épingler l’adresse IP validée. Un domaine hostile changeant de réponse DNS entre les deux (DNS rebinding) pourrait donc en théorie contourner le filtrage réseau privé. Le risque est limité par la fenêtre de temps très courte entre validation et appel, mais une résolution complète nécessiterait d’épingler la connexion sur l’IP validée (par ex. via un `dispatcher` undici avec `lookup` personnalisé).
+La connexion TCP/TLS est épinglée sur l’adresse IP déjà validée (dispatcher `undici` avec `lookup` personnalisé) : `fetch` ne refait jamais sa propre résolution DNS au moment de se connecter, ce qui ferme la fenêtre de contournement par DNS rebinding entre la validation et l’appel réel.
 
 ## Autorisations
 
