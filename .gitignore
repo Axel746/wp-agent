@@ -12,3 +12,4 @@ packages/database/generated/
 *.log
 wordpress-data/
 mariadb-data/
+*.tsbuildinfo
