@@ -1,6 +1,7 @@
 # Limites du MVP
 
 - Le stockage d’artefacts est local derrière une interface ; S3 n’est pas encore implémenté.
+- La file pg-boss partage PostgreSQL avec les données métier. Ce choix simplifie le MVP et convient à ses workflows longs et peu nombreux ; un volume massif de petits jobs pourrait justifier ultérieurement un broker dédié.
 - Le déploiement distant automatique d’un thème/plugin nécessite SSH/WP‑CLI, est désactivé par défaut et demande un durcissement propre à l’hébergeur. Le ZIP manuel reste toujours disponible.
 - L’authentification MVP est locale et mono-facteur ; SSO, invitation et récupération de mot de passe ne sont pas inclus.
 - Les coûts Codex ne sont affichés que si le SDK les expose ; ils restent nuls en mock.

@@ -8,3 +8,5 @@
 6. Conservez le résultat exact et marquez le déploiement `ROLLED_BACK` seulement après vérification.
 
 Pour réinitialiser uniquement l’instance de démonstration locale : `docker compose down --volumes`, puis relancez le bootstrap. Cette commande détruit les données locales et ne doit pas être utilisée sur un environnement partagé.
+
+Une sauvegarde PostgreSQL de production doit inclure le schéma métier et le schéma défini par `PG_BOSS_SCHEMA` (par défaut `pgboss`). Après restauration, démarrez d’abord le worker : pg-boss vérifie sa version de schéma et reprend les travaux créés ou en retry. Examinez les runs actifs avant de réautoriser les déploiements.

@@ -26,17 +26,17 @@ async function timedCheck(check: () => Promise<unknown>, timeoutMs = 3_000): Pro
 
 export async function GET() {
   const configuration = validateRuntimeConfiguration(process.env, { service: "web" });
-  const [database, redis] = await Promise.all([
+  const [database, jobQueue] = await Promise.all([
     timedCheck(async () => { await db.$queryRaw`SELECT 1`; }),
-    timedCheck(async () => { await runQueue().waitUntilReady(); })
+    timedCheck(async () => { await runQueue(); })
   ]);
   const configurationStatus = configuration.issues.length === 0 ? "ok" : "error";
-  const ready = configurationStatus === "ok" && database.status === "ok" && redis.status === "ok";
+  const ready = configurationStatus === "ok" && database.status === "ok" && jobQueue.status === "ok";
 
   return NextResponse.json({
     status: ready ? "ok" : "unavailable",
     service: "web",
-    checks: { configuration: { status: configurationStatus }, database, redis },
+    checks: { configuration: { status: configurationStatus }, database, jobQueue },
     warnings: configuration.warnings.length,
     timestamp: new Date().toISOString()
   }, {

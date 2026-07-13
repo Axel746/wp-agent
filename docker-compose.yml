@@ -15,17 +15,6 @@ services:
       timeout: 5s
       retries: 20
     restart: unless-stopped
-  redis:
-    image: redis:8.2-alpine
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
-    ports: ["6379:6379"]
-    volumes: ["redis-data:/data"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-    restart: unless-stopped
   mariadb:
     image: mariadb:11.8.8
     environment:
@@ -82,6 +71,5 @@ services:
     profiles: ["tools"]
 volumes:
   postgres-data:
-  redis-data:
   mariadb-data:
   wordpress-data:

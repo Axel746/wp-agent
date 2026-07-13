@@ -5,7 +5,7 @@ Toutes les réponses métier réussies suivent `{ "data": ... }`. Les erreurs su
 | Méthode | Route | Effet |
 |---|---|---|
 | GET | `/api/health/live` | Confirme que le processus web répond, sans tester ses dépendances |
-| GET | `/api/health` | Vérifie la configuration, PostgreSQL et Redis ; répond 503 si indisponible |
+| GET | `/api/health` | Vérifie la configuration et PostgreSQL ; répond 503 si indisponible |
 | POST | `/api/integrations/wordpress/test` | Teste sans stocker les identifiants |
 | POST | `/api/integrations/anthropic/test` | Teste le fournisseur Claude actif |
 | POST | `/api/integrations/codex/test` | Teste le fournisseur Codex actif |
