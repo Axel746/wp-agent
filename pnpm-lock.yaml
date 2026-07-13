@@ -20,6 +20,9 @@ importers:
       eslint:
         specifier: ^10.0.0
         version: 10.7.0(jiti@2.7.0)
+      tsx:
+        specifier: ^4.20.0
+        version: 4.23.0
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -105,6 +108,9 @@ importers:
       bullmq:
         specifier: 5.80.2
         version: 5.80.2
+      playwright:
+        specifier: 1.61.1
+        version: 1.61.1
       tsx:
         specifier: ^4.20.0
         version: 4.23.0
@@ -206,6 +212,9 @@ importers:
       '@wp-agent-studio/shared':
         specifier: workspace:*
         version: link:../shared
+      undici:
+        specifier: 7.16.0
+        version: 7.16.0
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -2213,6 +2222,10 @@ packages:
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
+  undici@7.16.0:
+    resolution: {integrity: sha512-QEg3HPMll0o3t2ourKwOeUAZ159Kn9mx5pnzHRQO8+Wixmh88YdZRiIwat0iNzNNXn0yoEtXJqFpyW7eM8BV7g==}
+    engines: {node: '>=20.18.1'}
+
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
@@ -4107,6 +4120,8 @@ snapshots:
   typescript@6.0.3: {}
 
   undici-types@7.18.2: {}
+
+  undici@7.16.0: {}
 
   uri-js@4.4.1:
     dependencies:

@@ -1,9 +1,11 @@
 # API interne
 
-Toutes les réponses réussies suivent `{ "data": ... }`. Les erreurs suivent `{ "error": { "code", "message", "details?", "correlationId?" } }`. Les mutations exigent une session, l’autorisation RBAC et `X-CSRF-Token` fourni par `GET /api/auth/session`.
+Toutes les réponses métier réussies suivent `{ "data": ... }`. Les erreurs suivent `{ "error": { "code", "message", "details?", "correlationId?" } }`. Les mutations exigent une session, l’autorisation RBAC et `X-CSRF-Token` fourni par `GET /api/auth/session`. Les sondes d’infrastructure publiques utilisent un format minimal distinct et ne renvoient aucune valeur de configuration.
 
 | Méthode | Route | Effet |
 |---|---|---|
+| GET | `/api/health/live` | Confirme que le processus web répond, sans tester ses dépendances |
+| GET | `/api/health` | Vérifie la configuration, PostgreSQL et Redis ; répond 503 si indisponible |
 | POST | `/api/integrations/wordpress/test` | Teste sans stocker les identifiants |
 | POST | `/api/integrations/anthropic/test` | Teste le fournisseur Claude actif |
 | POST | `/api/integrations/codex/test` | Teste le fournisseur Codex actif |

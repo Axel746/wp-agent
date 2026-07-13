@@ -1,5 +1,14 @@
 import { randomBytes, scryptSync } from "node:crypto";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { createDatabaseClient } from "../src/client.js";
+
+// Invoqué directement via "tsx prisma/seed.ts" (cwd=packages/database), donc le
+// .env de la racine du monorepo décrit dans le README n'est pas chargé automatiquement.
+const rootEnvPath = resolve(import.meta.dirname, "../../../.env");
+if (existsSync(rootEnvPath)) {
+  try { process.loadEnvFile(rootEnvPath); } catch { /* déjà chargé ou illisible */ }
+}
 
 const db = createDatabaseClient();
 const email = process.env.DEMO_ADMIN_EMAIL ?? "admin@wp-agent.local";

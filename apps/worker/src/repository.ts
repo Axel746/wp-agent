@@ -1,10 +1,12 @@
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
+import { chromium } from "playwright";
 import { db } from "@wp-agent-studio/database";
-import { AppError, WorkflowStateSchema, type WorkflowState } from "@wp-agent-studio/shared";
-import { LocalArtifactStorage, type RunData, type WorkflowRepository } from "@wp-agent-studio/orchestrator";
+import { AppError, TestReportSchema, WorkflowStateSchema, type WorkflowState } from "@wp-agent-studio/shared";
+import { LocalArtifactStorage, type RunData, type TestReport, type WorkflowRepository } from "@wp-agent-studio/orchestrator";
 import { decryptSecret } from "@wp-agent-studio/security";
 import { LocalDockerWordPressProvider, RestWordPressConnector, snapshotChecksum } from "@wp-agent-studio/wordpress";
+import { checkThemeStructure } from "./theme-checks.js";
 
 const json = (value: unknown) => value as any;
 export class PrismaWorkflowRepository implements WorkflowRepository {
@@ -42,10 +44,75 @@ export class PrismaWorkflowRepository implements WorkflowRepository {
     return { success: true, message: project.wordpressSiteId ? "Les contenus approuvés ont réellement été créés en brouillon sur WordPress ; les réponses exactes sont conservées." : "Le WordPress local a démarré et le thème approuvé a réellement été installé.", exactResponses };
   }
   async captureWordPressSnapshot(run: RunData) { const project = await db.project.findUnique({ where: { id: run.projectId }, include: { wordpressSite: { include: { secret: true } } } }); const site = project?.wordpressSite; if (!site) return null; if (!site.secret) throw new AppError("WORDPRESS_SECRET_MISSING", "Identifiants WordPress absents ou révoqués", 409); const credentials = decryptSecret<{ url: string; username: string; applicationPassword: string }>({ encryptedValue: site.secret.encryptedValue, iv: site.secret.iv, authTag: site.secret.authTag, keyVersion: site.secret.keyVersion }); const connector = new RestWordPressConnector(credentials, { allowPrivate: site.allowPrivateNetwork, production: process.env.NODE_ENV === "production" }); const snapshot = await connector.createSnapshot(); await db.wordPressSnapshot.create({ data: { wordpressSiteId: site.id, payload: json(snapshot), checksum: snapshotChecksum(snapshot) } }); return { checksum: snapshotChecksum(snapshot), capturedAt: snapshot.capturedAt, counts: { pages: snapshot.pages.length, posts: snapshot.posts.length, media: snapshot.media.length, plugins: snapshot.plugins.length, themes: snapshot.themes.length } }; }
+
+  async runAutomatedTests(run: RunData): Promise<TestReport> {
+    const started = Date.now();
+    const artifact = await db.artifact.findFirst({ where: { projectId: run.projectId, kind: "THEME" }, orderBy: { createdAt: "desc" } });
+    if (!artifact) return TestReportSchema.parse({ passed: false, summary: "Aucun thème généré à tester.", suites: [{ name: "theme-structure", passed: 0, failed: 1, durationMs: Date.now() - started }], consoleErrors: [], brokenLinks: [] });
+    const slug = artifact.name.replace(/\.zip$/, "");
+    const themeDirectory = resolve(run.workspaceDirectory, "build", slug);
+    const checks = await checkThemeStructure(themeDirectory, artifact);
+    const failed = checks.filter((check) => !check.ok);
+    const passed = failed.length === 0;
+    return TestReportSchema.parse({
+      passed,
+      summary: passed ? `Structure du thème validée par ${checks.length} contrôle(s) réel(s) sur les fichiers générés.` : `${failed.length} contrôle(s) réel(s) en échec : ${failed.map((check) => check.detail).join(" ")}`,
+      suites: [{ name: "theme-structure", passed: checks.length - failed.length, failed: failed.length, durationMs: Date.now() - started }],
+      consoleErrors: [],
+      brokenLinks: []
+    });
+  }
+
+  async validateStaging(run: RunData): Promise<TestReport> {
+    const started = Date.now();
+    if (run.target !== "local") {
+      return TestReportSchema.parse({ passed: true, summary: "Cible distante : les contenus ont été créés en brouillon via l'API REST (réponses exactes déjà enregistrées) ; la validation visuelle automatisée en direct n'est pas exécutée sur du contenu non publié.", suites: [{ name: "staging-validation", passed: 0, failed: 0, durationMs: 0 }], consoleErrors: [], brokenLinks: [] });
+    }
+    const siteUrl = process.env.WORDPRESS_LOCAL_URL ?? "http://localhost:8080";
+    const browser = await chromium.launch();
+    try {
+      const page = await browser.newPage();
+      const consoleErrors: string[] = [];
+      page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
+      page.on("pageerror", (error) => consoleErrors.push(error.message));
+      const response = await page.goto(siteUrl, { waitUntil: "networkidle", timeout: 30_000 }).catch(() => null);
+      if (!response || !response.ok()) {
+        return TestReportSchema.parse({ passed: false, summary: `Le WordPress local n'a pas répondu correctement (${response ? response.status() : "aucune réponse"}).`, suites: [{ name: "staging-validation", passed: 0, failed: 1, durationMs: Date.now() - started }], consoleErrors, brokenLinks: [] });
+      }
+      const links = await page.$$eval("a[href]", (anchors) => anchors.map((anchor) => (anchor as HTMLAnchorElement).href));
+      const sameOriginLinks = [...new Set(links)].filter((href) => href.startsWith(siteUrl)).slice(0, 25);
+      const brokenLinks: string[] = [];
+      for (const link of sameOriginLinks) {
+        try { const result = await fetch(link, { method: "GET", signal: AbortSignal.timeout(5000) }); if (!result.ok) brokenLinks.push(`${link} (${result.status})`); }
+        catch { brokenLinks.push(`${link} (injoignable)`); }
+      }
+      const accessibility = await page.evaluate(() => {
+        const images = Array.from(document.querySelectorAll("img")).filter((image) => !image.hasAttribute("alt")).length;
+        const unlabelledFields = Array.from(document.querySelectorAll("input, textarea, select")).filter((field) => { const id = field.getAttribute("id"); return !field.closest("label") && !(id && document.querySelector(`label[for="${id}"]`)); }).length;
+        const headingLevels = Array.from(document.querySelectorAll("h1, h2, h3, h4, h5, h6")).map((heading) => Number(heading.tagName.slice(1)));
+        let hierarchyIssues = 0; for (let index = 1; index < headingLevels.length; index++) { if (headingLevels[index]! - headingLevels[index - 1]! > 1) hierarchyIssues++; }
+        return { images, unlabelledFields, hierarchyIssues };
+      });
+      const violations = accessibility.images + accessibility.unlabelledFields + accessibility.hierarchyIssues;
+      const accessibilityScore = Math.max(0, 100 - violations * 10);
+      const passed = brokenLinks.length === 0 && consoleErrors.length === 0;
+      return TestReportSchema.parse({
+        passed,
+        summary: passed ? `Validation en direct réussie sur ${siteUrl} (${sameOriginLinks.length} lien(s) vérifié(s), score d'accessibilité ${accessibilityScore}).` : `Validation en direct sur ${siteUrl} : ${consoleErrors.length} erreur(s) console, ${brokenLinks.length} lien(s) cassé(s).`,
+        suites: [{ name: "staging-validation", passed: passed ? 1 : 0, failed: passed ? 0 : 1, durationMs: Date.now() - started }],
+        consoleErrors,
+        brokenLinks,
+        accessibilityScore
+      });
+    } finally {
+      await browser.close();
+    }
+  }
 }
 
 const escapeHtml = (value: string) => value.replace(/[&<>\"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[character]!);
 async function ensureLocalSite(workspaceId: string) { const url = process.env.WORDPRESS_LOCAL_URL ?? "http://localhost:8080"; return db.wordPressSite.upsert({ where: { workspaceId_url: { workspaceId, url } }, update: {}, create: { workspaceId, name: "WordPress local", url, isLocal: true, allowPrivateNetwork: true } }); }
 
 export async function acquireProjectLock(projectId: string, ownerId: string, ttlMs = 60_000): Promise<boolean> { const now = new Date(); const expiresAt = new Date(now.getTime() + ttlMs); return db.$transaction(async (tx) => { await tx.jobLock.deleteMany({ where: { projectId, expiresAt: { lt: now } } }); try { await tx.jobLock.create({ data: { projectId, ownerId, expiresAt } }); return true; } catch { return false; } }); }
+export async function renewProjectLock(projectId: string, ownerId: string, ttlMs = 60_000): Promise<boolean> { const expiresAt = new Date(Date.now() + ttlMs); const updated = await db.jobLock.updateMany({ where: { projectId, ownerId }, data: { expiresAt, heartbeatAt: new Date() } }); return updated.count === 1; }
 export async function releaseProjectLock(projectId: string, ownerId: string) { await db.jobLock.deleteMany({ where: { projectId, ownerId } }); }

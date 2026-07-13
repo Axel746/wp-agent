@@ -3,7 +3,25 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "tsx watch src/index.ts", "build": "tsc -p tsconfig.build.json", "start": "tsx src/index.ts", "typecheck": "tsc --noEmit -p tsconfig.json" },
-  "dependencies": { "@wp-agent-studio/agent-providers": "workspace:*", "@wp-agent-studio/database": "workspace:*", "@wp-agent-studio/observability": "workspace:*", "@wp-agent-studio/orchestrator": "workspace:*", "@wp-agent-studio/security": "workspace:*", "@wp-agent-studio/shared": "workspace:*", "@wp-agent-studio/wordpress": "workspace:*", "bullmq": "5.80.2", "tsx": "^4.20.0" },
-  "devDependencies": { "typescript": "6.0.3" }
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@wp-agent-studio/agent-providers": "workspace:*",
+    "@wp-agent-studio/database": "workspace:*",
+    "@wp-agent-studio/observability": "workspace:*",
+    "@wp-agent-studio/orchestrator": "workspace:*",
+    "@wp-agent-studio/security": "workspace:*",
+    "@wp-agent-studio/shared": "workspace:*",
+    "@wp-agent-studio/wordpress": "workspace:*",
+    "bullmq": "5.80.2",
+    "playwright": "1.61.1",
+    "tsx": "^4.20.0"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
 }

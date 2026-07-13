@@ -8,6 +8,8 @@ Les secrets sont isolés dans `IntegrationSecret`, chiffrés par AES‑256‑GCM
 
 Les URL WordPress acceptent seulement HTTP(S), interdisent les identifiants dans l’URL, exigent HTTPS en production, résolvent DNS avant l’appel et après chaque redirection, bloquent localhost, réseaux privés, link-local, multicast et métadonnées cloud. Les cibles privées exigent à la fois une option du site et `ENABLE_PRIVATE_NETWORK_TARGETS=true`. Les appels ont un timeout, trois redirections maximum et une limite de taille.
 
+La connexion TCP/TLS est épinglée sur l’adresse IP déjà validée (dispatcher `undici` avec `lookup` personnalisé) : `fetch` ne refait jamais sa propre résolution DNS au moment de se connecter, ce qui ferme la fenêtre de contournement par DNS rebinding entre la validation et l’appel réel.
+
 ## Autorisations
 
 Les rôles ADMIN, EDITOR et VIEWER sont vérifiés côté serveur. Les mutations vérifient l’origine et un jeton CSRF lié à la session. Les cookies de session sont HttpOnly, SameSite=Strict et Secure en production. Les deux portes d’approbation exigent un acteur `user`; un modèle ne peut pas déclencher une transition destructive.

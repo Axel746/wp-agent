@@ -25,6 +25,8 @@ pnpm dev
 
 Ouvrez `http://localhost:3000`. Par défaut après le seed : `admin@wp-agent.local` / `change-me`. Changez immédiatement ces valeurs hors d’une machine locale.
 
+Le `.env` de la racine est chargé automatiquement par le web, le worker et les commandes Prisma (`db:generate`, `db:migrate`, `db:seed`) via `process.loadEnvFile`, même si leur processus s’exécute dans un sous-dossier du monorepo.
+
 Le script PowerShell `./infra/scripts/bootstrap.ps1` automatise les mêmes étapes. Le worker Codex doit généralement tourner directement sur la machine hôte pour réutiliser un environnement Codex déjà authentifié et pour créer ses workspaces isolés. Il n’a pas besoin d’être placé dans Docker.
 
 ## Commandes
@@ -80,6 +82,7 @@ docs/                     Architecture, API, sécurité et exploitation
 - [API interne](docs/API.md)
 - [Sécurité](docs/SECURITY.md)
 - [Déploiement](docs/DEPLOYMENT.md)
+- [Déploiement Hostinger](docs/HOSTINGER.md)
 - [Restauration](docs/RESTORE.md)
 - [Limites du MVP](docs/LIMITS.md)
 

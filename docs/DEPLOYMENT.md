@@ -13,3 +13,5 @@ Le chemin SSH/WP‑CLI reste fermé tant que `ENABLE_REMOTE_DEPLOYMENT=false`. L
 ## Application
 
 Construisez avec `pnpm build`. Les Dockerfiles `infra/docker/Dockerfile.web` et `Dockerfile.worker` sont fournis. Le worker hôte est recommandé si Codex utilise une authentification locale. Exposez seulement le web derrière HTTPS ; PostgreSQL, Redis, MariaDB et Docker ne doivent pas être publics.
+
+Les sondes non authentifiées `GET /api/health/live` et `GET /api/health` exposent respectivement la vie du processus et la disponibilité de la configuration, de PostgreSQL et de Redis. Elles ne renvoient ni exception ni valeur de secret. Pour Hostinger, consultez le [guide dédié](HOSTINGER.md).

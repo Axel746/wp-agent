@@ -7,6 +7,9 @@
   "engines": { "node": ">=22.12.0" },
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "hostinger:build": "pnpm db:generate && pnpm --filter @wp-agent-studio/web build",
+    "hostinger:start": "pnpm --filter @wp-agent-studio/web start",
+    "check:production": "tsx scripts/production-check.ts",
     "dev": "pnpm --parallel --filter @wp-agent-studio/web --filter @wp-agent-studio/worker dev",
     "lint": "eslint .",
     "typecheck": "pnpm -r --if-present typecheck",
@@ -22,6 +25,7 @@
     "@playwright/test": "1.61.1",
     "@types/node": "^24.0.0",
     "eslint": "^10.0.0",
+    "tsx": "^4.20.0",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.0.0",
     "vitest": "4.1.10"

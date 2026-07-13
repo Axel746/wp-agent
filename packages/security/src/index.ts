@@ -4,3 +4,4 @@ export * from "./rbac.js";
 export * from "./ssrf.js";
 export * from "./commands.js";
 export * from "./csrf.js";
+export * from "./runtime-config.js";
