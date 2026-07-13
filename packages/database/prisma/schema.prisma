@@ -1,0 +1,449 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+enum IntegrationKind {
+  WORDPRESS
+  ANTHROPIC
+  OPENAI
+  SSH
+}
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+enum WorkflowState {
+  INTAKE
+  WORDPRESS_SNAPSHOT
+  SPECIFICATION_BY_CLAUDE
+  TECHNICAL_PLAN_BY_CODEX
+  PLAN_REVIEW_BY_CLAUDE
+  WAITING_FOR_PLAN_APPROVAL
+  IMPLEMENTATION_BY_CODEX
+  AUTOMATED_TESTS
+  REVIEW_BY_CLAUDE
+  FIXES_BY_CODEX
+  WAITING_FOR_DEPLOYMENT_APPROVAL
+  STAGING_DEPLOYMENT
+  STAGING_VALIDATION
+  PRODUCTION_DEPLOYMENT
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+enum AgentName {
+  user
+  claude
+  codex
+  system
+}
+enum AgentRecipient {
+  user
+  claude
+  codex
+  system
+  all
+}
+enum AgentMessageType {
+  brief
+  question
+  answer
+  specification
+  plan
+  review
+  decision
+  task
+  tool_call
+  tool_result
+  artifact
+  error
+}
+enum TaskStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  BLOCKED
+  CANCELLED
+}
+enum ArtifactKind {
+  THEME
+  PLUGIN
+  CONTENT
+  REPORT
+  SNAPSHOT
+  DIFF
+  SCREENSHOT
+  ZIP
+  LOG
+}
+enum ApprovalKind {
+  PLAN
+  DEPLOYMENT
+  ROLLBACK
+  DESTRUCTIVE
+}
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+  CANCELLED
+}
+enum DeploymentTarget {
+  LOCAL
+  REMOTE_CONTENT
+  REMOTE_SSH
+}
+enum DeploymentStatus {
+  PLANNED
+  WAITING_APPROVAL
+  RUNNING
+  SUCCEEDED
+  FAILED
+  PARTIAL
+  ROLLED_BACK
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+  version      Int      @default(1)
+  memberships  WorkspaceMember[]
+  approvals    Approval[] @relation("ApprovalDecider")
+}
+
+model Workspace {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  version   Int      @default(1)
+  members   WorkspaceMember[]
+  secrets   IntegrationSecret[]
+  sites     WordPressSite[]
+  projects  Project[]
+  messages  AgentMessage[]
+  auditLogs AuditLog[]
+}
+
+model WorkspaceMember {
+  workspaceId String
+  userId      String
+  role        Role
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([workspaceId, userId])
+  @@index([userId])
+}
+
+model IntegrationSecret {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  kind           IntegrationKind
+  label          String
+  encryptedValue String
+  iv             String
+  authTag        String
+  keyVersion     Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  revokedAt      DateTime?
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sites          WordPressSite[]
+  @@unique([workspaceId, kind, label])
+  @@index([workspaceId, revokedAt])
+}
+
+model WordPressSite {
+  id                    String   @id @default(cuid())
+  workspaceId           String
+  secretId              String?
+  name                  String
+  url                   String
+  isLocal               Boolean  @default(false)
+  allowPrivateNetwork   Boolean  @default(false)
+  lastConnectionStatus  String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  deletedAt             DateTime?
+  version               Int      @default(1)
+  workspace             Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  secret                IntegrationSecret? @relation(fields: [secretId], references: [id], onDelete: SetNull)
+  snapshots             WordPressSnapshot[]
+  projects              Project[]
+  deployments           Deployment[]
+  @@unique([workspaceId, url])
+  @@index([workspaceId, deletedAt])
+}
+
+model WordPressSnapshot {
+  id             String   @id @default(cuid())
+  wordpressSiteId String
+  payload        Json
+  checksum       String
+  createdAt      DateTime @default(now())
+  wordpressSite  WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Cascade)
+  @@index([wordpressSiteId, createdAt])
+}
+
+model Project {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  wordpressSiteId String?
+  name            String
+  slug            String
+  status          ProjectStatus @default(DRAFT)
+  brief           Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  deletedAt       DateTime?
+  version         Int      @default(1)
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  wordpressSite   WordPressSite? @relation(fields: [wordpressSiteId], references: [id], onDelete: SetNull)
+  memory          ProjectMemory?
+  runs            AgentRun[]
+  messages        AgentMessage[]
+  tasks           Task[]
+  artifacts       Artifact[]
+  approvals       Approval[]
+  deployments     Deployment[]
+  auditLogs       AuditLog[]
+  locks           JobLock[]
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status, deletedAt])
+}
+
+model ProjectMemory {
+  id                String   @id @default(cuid())
+  projectId         String   @unique
+  currentBrief      Json
+  currentSpec       Json?
+  decisions         Json     @default("[]")
+  siteMap           Json?
+  designTokens      Json?
+  taskState         Json     @default("[]")
+  openIssues        Json     @default("[]")
+  testReport        Json?
+  deploymentHistory Json     @default("[]")
+  compactSummary    String   @default("")
+  updatedAt         DateTime @updatedAt
+  version           Int      @default(1)
+  project           Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model AgentRun {
+  id              String   @id @default(cuid())
+  projectId       String
+  state           WorkflowState @default(INTAKE)
+  stateVersion    Int      @default(1)
+  isPaused        Boolean  @default(false)
+  cancellationRequested Boolean @default(false)
+  currentAgent    AgentName?
+  turnCount       Int      @default(0)
+  fixCycleCount   Int      @default(0)
+  maxTurns        Int      @default(12)
+  maxFixCycles    Int      @default(2)
+  budgetCents     Int?
+  consumedCents   Int      @default(0)
+  startedAt       DateTime @default(now())
+  finishedAt      DateTime?
+  lastError       Json?
+  idempotencyKey  String
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages        AgentMessage[]
+  usage           AgentUsage[]
+  tasks           Task[]
+  artifacts       Artifact[]
+  approvals       Approval[]
+  deployments     Deployment[]
+  auditLogs       AuditLog[]
+  @@unique([projectId, idempotencyKey])
+  @@index([projectId, state, isPaused])
+}
+
+model AgentMessage {
+  id                String   @id @default(cuid())
+  workspaceId       String
+  projectId         String
+  runId             String
+  sender            AgentName
+  recipient         AgentRecipient
+  type              AgentMessageType
+  content           String
+  structuredPayload Json
+  artifactRefs      Json     @default("[]")
+  parentMessageId   String?
+  createdAt         DateTime @default(now())
+  workspace         Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project           Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run               AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  parentMessage     AgentMessage? @relation("MessageThread", fields: [parentMessageId], references: [id], onDelete: SetNull)
+  replies           AgentMessage[] @relation("MessageThread")
+  @@index([projectId, createdAt])
+  @@index([runId, createdAt])
+}
+
+model AgentUsage {
+  id           String   @id @default(cuid())
+  runId        String
+  agentName    AgentName
+  model        String?
+  inputTokens  Int?
+  outputTokens Int?
+  estimatedCostCents Int?
+  durationMs   Int
+  createdAt    DateTime @default(now())
+  run          AgentRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  @@index([runId, agentName])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  projectId   String
+  runId       String?
+  externalId  String
+  title       String
+  description String
+  status      TaskStatus @default(PENDING)
+  dependencies Json    @default("[]")
+  result      Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  version     Int      @default(1)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run         AgentRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  @@unique([projectId, externalId])
+  @@index([projectId, status])
+}
+
+model Artifact {
+  id          String   @id @default(cuid())
+  projectId   String
+  runId       String?
+  kind        ArtifactKind
+  name        String
+  storagePath String
+  mimeType    String
+  sha256      String
+  size        BigInt
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run         AgentRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  @@unique([projectId, sha256, name])
+  @@index([projectId, kind, createdAt])
+}
+
+model Approval {
+  id          String   @id @default(cuid())
+  projectId   String
+  runId       String?
+  kind        ApprovalKind
+  status      ApprovalStatus @default(PENDING)
+  summary     String
+  changes     Json
+  decidedById String?
+  comment     String?
+  requestedAt DateTime @default(now())
+  decidedAt   DateTime?
+  expiresAt   DateTime?
+  version     Int      @default(1)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run         AgentRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  decidedBy   User? @relation("ApprovalDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  @@index([projectId, status, requestedAt])
+}
+
+model Deployment {
+  id              String   @id @default(cuid())
+  projectId       String
+  runId           String?
+  wordpressSiteId String
+  target          DeploymentTarget
+  status          DeploymentStatus @default(PLANNED)
+  plan            Json
+  exactResponses  Json     @default("[]")
+  backupArtifactId String?
+  idempotencyKey  String
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  createdAt       DateTime @default(now())
+  version         Int      @default(1)
+  project         Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run             AgentRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  wordpressSite   WordPressSite @relation(fields: [wordpressSiteId], references: [id], onDelete: Restrict)
+  changes         DeploymentChange[]
+  @@unique([projectId, idempotencyKey])
+  @@index([projectId, status, createdAt])
+}
+
+model DeploymentChange {
+  id           String   @id @default(cuid())
+  deploymentId String
+  operation    String
+  resourceType String
+  resourceId   String?
+  before       Json?
+  after        Json?
+  apiResponse  Json?
+  rollbackData Json?
+  createdAt    DateTime @default(now())
+  deployment   Deployment @relation(fields: [deploymentId], references: [id], onDelete: Cascade)
+  @@index([deploymentId, createdAt])
+}
+
+model AuditLog {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  projectId     String?
+  runId         String?
+  actorType     String
+  actorId       String?
+  action        String
+  resourceType  String
+  resourceId    String?
+  correlationId String
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now())
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  run           AgentRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  @@index([workspaceId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([correlationId])
+}
+
+model JobLock {
+  id         String   @id @default(cuid())
+  projectId  String
+  ownerId    String
+  acquiredAt DateTime @default(now())
+  expiresAt  DateTime
+  heartbeatAt DateTime @default(now())
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  @@unique([projectId])
+  @@index([expiresAt])
+}

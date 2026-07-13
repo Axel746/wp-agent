@@ -1,0 +1,19 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { relative, resolve } from "node:path";
+import { AppError } from "@wp-agent-studio/shared";
+const execFileAsync = promisify(execFile);
+
+export class LocalDockerWordPressProvider {
+  constructor(private readonly composeFile: string, private readonly projectDirectory: string, private readonly siteUrl = process.env.WORDPRESS_LOCAL_URL ?? "http://localhost:8080") {}
+  private async compose(args: string[], timeout = 120_000) { return execFileAsync("docker", ["compose", "-f", this.composeFile, ...args], { cwd: this.projectDirectory, timeout, windowsHide: true, env: process.env }); }
+  async start() { await this.compose(["up", "-d", "postgres", "redis", "mariadb", "wordpress"]); await this.waitUntilReady(); await this.installInitialSite(); return { previewUrl: this.siteUrl }; }
+  async waitUntilReady(timeoutMs = 120_000) { const started = Date.now(); while (Date.now() - started < timeoutMs) { try { const response = await fetch(this.siteUrl, { signal: AbortSignal.timeout(3000), redirect: "manual" }); if (response.status < 500) return; } catch { /* Le conteneur démarre encore; nouvelle tentative bornée. */ } await new Promise((resolve) => setTimeout(resolve, 2000)); } throw new AppError("WORDPRESS_START_TIMEOUT", "WordPress local n’est pas devenu disponible", 504); }
+  async installInitialSite() { const user = process.env.WORDPRESS_LOCAL_ADMIN_USER ?? "wpagent"; const password = process.env.WORDPRESS_LOCAL_ADMIN_PASSWORD ?? "change-me"; const email = process.env.WORDPRESS_LOCAL_ADMIN_EMAIL ?? "admin@example.test"; await this.compose(["run", "--rm", "wpcli", "wp", "core", "is-installed"], 30_000).catch(async () => { await this.compose(["run", "--rm", "wpcli", "wp", "core", "install", `--url=${this.siteUrl}`, "--title=WP Agent Studio Demo", `--admin_user=${user}`, `--admin_password=${password}`, `--admin_email=${email}`, "--skip-email"]); }); }
+  private artifactContainerPath(zipPath: string) { const root = resolve(this.projectDirectory, process.env.ARTIFACTS_DIR ?? "./artifacts"); const rel = relative(root, resolve(zipPath)); if (rel.startsWith("..")) throw new AppError("ARTIFACT_PATH_FORBIDDEN", "L’artefact doit être stocké sous ARTIFACTS_DIR", 403); return `/artifacts/${rel.replace(/\\/g, "/")}`; }
+  async installTheme(zipPath: string) { await this.compose(["run", "--rm", "wpcli", "wp", "theme", "install", this.artifactContainerPath(zipPath), "--force", "--activate"]); }
+  async installPlugin(zipPath: string) { await this.compose(["run", "--rm", "wpcli", "wp", "plugin", "install", this.artifactContainerPath(zipPath), "--force", "--activate"]); }
+  async importPages(pages: Array<{ title: string; slug: string; content: string }>) { const results: Array<{ slug: string; id: string; operation: "created" | "updated" }> = []; for (const page of pages) { const listed = await this.compose(["run", "--rm", "wpcli", "wp", "post", "list", "--post_type=page", `--name=${page.slug}`, "--field=ID", "--format=ids"]); const id = listed.stdout.trim().split(/\s+/)[0]; if (id) { await this.compose(["run", "--rm", "wpcli", "wp", "post", "update", id, `--post_title=${page.title}`, `--post_name=${page.slug}`, `--post_content=${page.content}`, "--post_status=draft"]); results.push({ slug: page.slug, id, operation: "updated" }); } else { const created = await this.compose(["run", "--rm", "wpcli", "wp", "post", "create", "--porcelain", "--post_type=page", `--post_title=${page.title}`, `--post_name=${page.slug}`, `--post_content=${page.content}`, "--post_status=draft"]); results.push({ slug: page.slug, id: created.stdout.trim(), operation: "created" }); } } return results; }
+  async reset() { await this.compose(["down", "--volumes"]); return this.start(); }
+  previewUrl() { return this.siteUrl; }
+}

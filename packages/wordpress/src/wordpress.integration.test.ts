@@ -1,0 +1,4 @@
+import { describe, expect, it } from "vitest";
+import { RestWordPressConnector } from "./connector.js";
+const integration = process.env.RUN_INTEGRATION === "true";
+describe.skipIf(!integration)("WordPress local", () => { it("crée puis retrouve une page en brouillon sans doublon", async () => { const connector = new RestWordPressConnector({ url: process.env.WORDPRESS_LOCAL_URL!, username: process.env.WORDPRESS_LOCAL_ADMIN_USER!, applicationPassword: process.env.WORDPRESS_LOCAL_ADMIN_PASSWORD! }, { allowPrivate: true }); const first: any = await connector.createDraftPage({ title: "Test intégration", slug: "test-integration", content: "Contenu" }, "integration:page"); const second: any = await connector.createDraftPage({ title: "Test intégration", slug: "test-integration", content: "Contenu mis à jour" }, "integration:page"); expect(second.id).toBe(first.id); expect(second.status).toBe("draft"); }); });

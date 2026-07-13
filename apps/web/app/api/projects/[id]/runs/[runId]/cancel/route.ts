@@ -1,0 +1,2 @@
+import { db } from "@wp-agent-studio/database";import { route,ok } from "@/lib/http";import { enqueueRun } from "@/lib/queue";
+export const POST=route(async(_request,{params,session})=>{const{id,runId}=await params;const updated=await db.agentRun.updateMany({where:{id:runId,projectId:id,project:{workspaceId:session.workspaceId},finishedAt:null},data:{cancellationRequested:true,isPaused:false}});if(updated.count)await enqueueRun(runId);return ok({cancelRequested:updated.count===1})},{permission:"project:write",csrf:true});

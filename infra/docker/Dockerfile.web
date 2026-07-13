@@ -1,0 +1,17 @@
+FROM node:24-alpine AS base
+RUN corepack enable && corepack prepare pnpm@11.7.0 --activate
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/security/package.json packages/security/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/wordpress/package.json packages/wordpress/package.json
+COPY packages/orchestrator/package.json packages/orchestrator/package.json
+COPY packages/agent-providers/package.json packages/agent-providers/package.json
+RUN pnpm install --frozen-lockfile
+COPY . .
+ARG DATABASE_URL=postgresql://wpagent:wpagent@postgres:5432/wpagent
+RUN pnpm db:generate && pnpm --filter @wp-agent-studio/web build
+EXPOSE 3000
+CMD ["pnpm", "--filter", "@wp-agent-studio/web", "start"]

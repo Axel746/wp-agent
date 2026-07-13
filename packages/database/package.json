@@ -1,0 +1,16 @@
+{
+  "name": "@wp-agent-studio/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./client": "./src/client.ts", "./generated/*": "./generated/prisma/*" },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate": "prisma migrate deploy",
+    "seed": "tsx prisma/seed.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "dependencies": { "@prisma/adapter-pg": "7.8.0", "@prisma/client": "7.8.0", "pg": "^8.16.0" },
+  "devDependencies": { "@types/pg": "^8.15.0", "prisma": "7.8.0", "tsx": "^4.20.0", "typescript": "6.0.3" }
+}

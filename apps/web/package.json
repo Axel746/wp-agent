@@ -1,0 +1,9 @@
+{
+  "name": "@wp-agent-studio/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "next dev", "build": "next build --webpack", "start": "next start", "typecheck": "tsc --noEmit" },
+  "dependencies": { "@wp-agent-studio/agent-providers": "workspace:*", "@wp-agent-studio/database": "workspace:*", "@wp-agent-studio/orchestrator": "workspace:*", "@wp-agent-studio/security": "workspace:*", "@wp-agent-studio/shared": "workspace:*", "@wp-agent-studio/wordpress": "workspace:*", "bullmq": "5.80.2", "jose": "6.2.3", "next": "16.2.10", "react": "19.2.7", "react-dom": "19.2.7", "zod": "4.4.3" },
+  "devDependencies": { "@types/react": "^19.2.0", "@types/react-dom": "^19.2.0", "typescript": "6.0.3" }
+}

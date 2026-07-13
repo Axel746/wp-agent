@@ -1,0 +1,10 @@
+{
+  "name": "@wp-agent-studio/wordpress",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@wp-agent-studio/security": "workspace:*", "@wp-agent-studio/shared": "workspace:*", "archiver": "8.0.0", "zod": "4.4.3" },
+  "devDependencies": { "@wp-agent-studio/agent-providers": "workspace:*", "typescript": "6.0.3", "vitest": "4.1.10" }
+}

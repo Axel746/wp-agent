@@ -1,0 +1,10 @@
+{
+  "name": "@wp-agent-studio/orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@wp-agent-studio/agent-providers": "workspace:*", "@wp-agent-studio/security": "workspace:*", "@wp-agent-studio/shared": "workspace:*", "@wp-agent-studio/wordpress": "workspace:*", "zod": "4.4.3" },
+  "devDependencies": { "typescript": "6.0.3", "vitest": "4.1.10" }
+}

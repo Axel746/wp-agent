@@ -1,0 +1,87 @@
+name: wp-agent-studio
+services:
+  postgres:
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_DB: wpagent
+      POSTGRES_USER: wpagent
+      POSTGRES_PASSWORD: wpagent
+      PGDATA: /var/lib/postgresql/18/docker
+    ports: ["5432:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wpagent -d wpagent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:8.2-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    ports: ["6379:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  mariadb:
+    image: mariadb:11.8.8
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: wordpress
+      MARIADB_ROOT_PASSWORD: local-root-only
+    volumes: ["mariadb-data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+  wordpress:
+    image: wordpress:7.0-php8.3-apache
+    depends_on:
+      mariadb: { condition: service_healthy }
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_ENVIRONMENT_TYPE', 'local');
+        define('DISALLOW_FILE_EDIT', true);
+    ports: ["8080:80"]
+    volumes:
+      - wordpress-data:/var/www/html
+      - ./wordpress/wp-agent-studio-bridge:/var/www/html/wp-content/plugins/wp-agent-studio-bridge:ro
+    healthcheck:
+      test: ["CMD-SHELL", "php -r '$$s=@fsockopen(\"127.0.0.1\",80); exit($$s?0:1);'"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+  wpcli:
+    image: wordpress:cli-2.12-php8.3
+    depends_on:
+      wordpress: { condition: service_healthy }
+    user: "33:33"
+    working_dir: /var/www/html
+    environment:
+      WORDPRESS_DB_HOST: mariadb:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+    volumes:
+      - wordpress-data:/var/www/html
+      - ./artifacts:/artifacts:ro
+      - ./wordpress/wp-agent-studio-bridge:/var/www/html/wp-content/plugins/wp-agent-studio-bridge:ro
+    entrypoint: []
+    command: ["wp --info"]
+    profiles: ["tools"]
+volumes:
+  postgres-data:
+  redis-data:
+  mariadb-data:
+  wordpress-data:

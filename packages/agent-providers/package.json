@@ -1,0 +1,10 @@
+{
+  "name": "@wp-agent-studio/agent-providers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@anthropic-ai/sdk": "0.111.0", "@openai/codex-sdk": "0.144.1", "@wp-agent-studio/security": "workspace:*", "@wp-agent-studio/shared": "workspace:*", "zod": "4.4.3" },
+  "devDependencies": { "typescript": "6.0.3", "vitest": "4.1.10" }
+}

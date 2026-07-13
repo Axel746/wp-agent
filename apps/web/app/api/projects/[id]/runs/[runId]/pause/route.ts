@@ -1,0 +1,2 @@
+import { db } from "@wp-agent-studio/database";import { route,ok } from "@/lib/http";
+export const POST=route(async(_request,{params,session})=>{const{id,runId}=await params;const updated=await db.agentRun.updateMany({where:{id:runId,projectId:id,project:{workspaceId:session.workspaceId},finishedAt:null},data:{isPaused:true}});return ok({paused:updated.count===1})},{permission:"project:write",csrf:true});

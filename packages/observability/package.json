@@ -1,0 +1,10 @@
+{
+  "name": "@wp-agent-studio/observability",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit -p tsconfig.json" },
+  "dependencies": { "@wp-agent-studio/security": "workspace:*", "pino": "10.3.1" },
+  "devDependencies": { "typescript": "6.0.3" }
+}

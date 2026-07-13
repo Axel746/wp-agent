@@ -1,0 +1,9 @@
+import { test, expect } from "@playwright/test";
+
+test.describe("workflow démonstration", () => {
+  test.beforeEach(async ({ page }) => { await page.goto("/login"); await page.getByLabel("Adresse e-mail").fill(process.env.DEMO_ADMIN_EMAIL ?? "admin@wp-agent.local"); await page.getByLabel("Mot de passe").fill(process.env.DEMO_ADMIN_PASSWORD ?? "change-me"); await page.getByRole("button", { name: "Entrer dans le studio" }).click(); await expect(page).toHaveURL(/dashboard/); });
+  test("crée un projet, affiche les agents et exige les approbations", async ({ page }) => {
+    await page.goto("/projects/new"); const name = `Studio E2E ${Date.now()}`; await page.getByLabel("Nom du projet").fill(name); await page.getByLabel("Secteur d’activité").fill("architecture"); await page.getByLabel("Public cible").fill("particuliers"); await page.getByLabel("Objectif principal").fill("recevoir des demandes de rendez-vous"); await page.getByRole("button", { name: "Créer le projet" }).click(); await expect(page.getByRole("heading", { name })).toBeVisible(); await page.getByRole("button", { name: "Lancer le workflow" }).click(); await page.getByRole("link", { name: "Salle des agents" }).click(); await expect(page.getByText("Brief initial soumis au studio.")).toBeVisible(); await expect.poll(async () => (await page.locator(".message.claude").count()), { timeout: 30_000 }).toBeGreaterThan(0); await page.goto("/approvals"); await expect(page.getByText(name)).toBeVisible(); await page.getByRole("button", { name: "Approuver" }).first().click(); await page.goto(page.url().replace(/\/approvals$/, "/dashboard"));
+  });
+  test("présente les écrans de contrôle essentiels", async ({ page }) => { for (const path of ["/sites", "/connections", "/approvals", "/deployments", "/audit", "/settings"]) { await page.goto(path); await expect(page.locator("h1")).toBeVisible(); } });
+});

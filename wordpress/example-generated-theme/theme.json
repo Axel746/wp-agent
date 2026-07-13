@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/theme.json",
+  "version": 3,
+  "settings": {
+    "appearanceTools": true,
+    "layout": { "contentSize": "720px", "wideSize": "1200px" },
+    "color": { "palette": [
+      { "slug": "background", "name": "Fond", "color": "#F7F4EC" },
+      { "slug": "text", "name": "Texte", "color": "#16221D" },
+      { "slug": "primary", "name": "Primaire", "color": "#176B52" }
+    ] }
+  }
+}
