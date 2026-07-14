@@ -29,14 +29,14 @@ Branche : branche de livraison validée
 Node.js : 24.x
 Gestionnaire : pnpm
 Répertoire racine : ./
-Commande de build : pnpm hostinger:build
+Commande de build : pnpm build
 Répertoire de sortie : .
 Fichier d’entrée : scripts/hostinger-runtime.mjs
 Sonde de vie : /api/health/live
 Sonde de disponibilité : /api/health
 ```
 
-`pnpm hostinger:build` génère le client Prisma et construit le web ainsi que le worker. Au démarrage, le lanceur applique les migrations, initialise le compte administrateur de façon idempotente, puis garde Next.js et le worker pg-boss actifs. Si l’un des deux processus tombe, l’application est arrêtée afin que Hostinger puisse la redémarrer proprement.
+`pnpm build` génère le client Prisma et construit le web ainsi que le worker. `pnpm hostinger:build` reste un alias pratique vers cette commande. Au démarrage, le lanceur applique les migrations, initialise le compte administrateur de façon idempotente, puis garde Next.js et le worker pg-boss actifs. Si l’un des deux processus tombe, l’application est arrêtée afin que Hostinger puisse la redémarrer proprement.
 
 Le pack Web App ne fournit pas de commande de release séparée : `pnpm db:migrate` et `pnpm db:seed` sont donc exécutés avant les deux processus à chaque démarrage. Ces opérations sont idempotentes ; un échec empêche l’application de démarrer avec un schéma incohérent.
 
