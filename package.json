@@ -6,8 +6,8 @@
   "packageManager": "pnpm@11.12.0",
   "engines": { "node": ">=22.12.0" },
   "scripts": {
-    "build": "pnpm db:generate && pnpm -r --if-present build",
-    "hostinger:build": "pnpm build",
+    "build": "node scripts/build.mjs",
+    "hostinger:build": "node scripts/build.mjs",
     "hostinger:start": "node scripts/hostinger-runtime.mjs",
     "check:production": "tsx scripts/production-check.ts",
     "dev": "pnpm --parallel --filter @wp-agent-studio/web --filter @wp-agent-studio/worker dev",
