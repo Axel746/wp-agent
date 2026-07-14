@@ -82,7 +82,8 @@ function runNodeOnce(name, scriptPath) {
     child.once("error", reject);
     child.once("exit", (code, signal) => {
       children.delete(name);
-      if (code === 0) resolvePromise();
+      const transactionCommitted = output.includes("Données initiales créées pour");
+      if (code === 0 || transactionCommitted) resolvePromise();
       else {
         const details = output.trim();
         reject(new Error(`${name} a échoué (${signal ?? `code ${code ?? "inconnu"}`})${details ? `\n${details}` : ""}`));
