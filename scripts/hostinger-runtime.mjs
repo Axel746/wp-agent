@@ -91,9 +91,20 @@ function runNodeOnce(name, scriptPath) {
   });
 }
 
-function waitForExit(name, child) {
+function waitForExit(name, child, captureOutput = false) {
+  let output = "";
+  if (captureOutput) {
+    const forward = (stream, destination) => stream?.on("data", (chunk) => {
+      const text = chunk.toString();
+      output = `${output}${text}`.slice(-4_000);
+      destination.write(text);
+    });
+    forward(child.stdout, process.stdout);
+    forward(child.stderr, process.stderr);
+  }
+
   return new Promise((resolvePromise) => {
-    child.once("exit", (code, signal) => resolvePromise({ name, code, signal }));
+    child.once("exit", (code, signal) => resolvePromise({ name, code, signal, output: output.trim() }));
   });
 }
 
@@ -188,8 +199,8 @@ async function main() {
   await runOnce("database-migration", "packages/database", "prisma", "prisma", ["migrate", "deploy"]);
   await runNodeOnce("database-seed", "scripts/hostinger-seed.mjs");
 
-  const worker = await startProcess("worker", "apps/worker", "tsx", "tsx", ["src/index.ts"]);
-  const workerExit = waitForExit("worker", worker);
+  const worker = await startProcess("worker", "apps/worker", "tsx", "tsx", ["src/index.ts"], ["ignore", "pipe", "pipe"]);
+  const workerExit = waitForExit("worker", worker, true);
 
   const firstExit = await Promise.race([
     webExit,
@@ -198,7 +209,7 @@ async function main() {
 
   if (!stopping) {
     const reason = firstExit.signal ?? `code ${firstExit.code ?? "inconnu"}`;
-    console.error(`[hostinger_runtime] ${firstExit.name} s’est arrêté (${reason})`);
+    console.error(`[hostinger_runtime] ${firstExit.name} s’est arrêté (${reason})${firstExit.output ? `\n${firstExit.output}` : ""}`);
     await stopChildren();
     process.exitCode = firstExit.code === 0 ? 1 : (firstExit.code ?? 1);
   }

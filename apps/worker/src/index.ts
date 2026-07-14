@@ -25,8 +25,9 @@ const queue = createJobQueue({
 try {
   await startWorkflowQueue(queue);
 } catch (error) {
-  rootLog.fatal({ error: error instanceof Error ? error.message : String(error) }, "job_queue_start_failed");
-  process.exit(1);
+  const message = error instanceof Error ? error.message : String(error);
+  rootLog.fatal({ error: message }, "job_queue_start_failed");
+  throw new Error(`Le démarrage de la file PostgreSQL a échoué : ${message}`, { cause: error });
 }
 
 await queue.work<WorkflowJobPayload, { state: string }, typeof workflowWorkerOptions>(WORKFLOW_QUEUE_NAME, workflowWorkerOptions, async ([job]) => {
