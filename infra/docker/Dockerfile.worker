@@ -1,5 +1,5 @@
 FROM node:24-alpine AS base
-RUN apk add --no-cache git && corepack enable && corepack prepare pnpm@11.7.0 --activate
+RUN apk add --no-cache git && corepack enable && corepack prepare pnpm@11.12.0 --activate
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile && DATABASE_URL=postgresql://wpagent:wpagent@postgres:5432/wpagent pnpm db:generate && pnpm --filter @wp-agent-studio/worker build
