@@ -2,6 +2,7 @@ import { randomBytes, randomUUID, scryptSync } from "node:crypto";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { Pool } from "pg";
+import { createPostgresConnectionOptions } from "../src/connection-options.js";
 
 // Invoqué directement via "tsx prisma/seed.ts" (cwd=packages/database), donc le
 // .env de la racine du monorepo décrit dans le README n'est pas chargé automatiquement.
@@ -20,7 +21,7 @@ if (!connectionString) throw new Error("DATABASE_URL est requis pour initialiser
 
 // Le seed utilise directement PostgreSQL afin de rester exécutable avant le
 // démarrage du client Prisma et de pouvoir renouveler le mot de passe admin.
-const pool = new Pool({ connectionString, max: 1 });
+const pool = new Pool({ ...createPostgresConnectionOptions(connectionString), max: 1 });
 const client = await pool.connect();
 
 try {
