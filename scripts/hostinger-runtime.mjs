@@ -61,6 +61,36 @@ function runOnce(name, packagePath, packageName, binName, args) {
   });
 }
 
+function runNodeOnce(name, scriptPath) {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(process.execPath, [resolve(projectRoot, scriptPath)], {
+      cwd: projectRoot,
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true
+    });
+    children.set(name, child);
+    let output = "";
+    const forward = (stream, destination) => stream?.on("data", (chunk) => {
+      const text = chunk.toString();
+      output = `${output}${text}`.slice(-4_000);
+      destination.write(text);
+    });
+
+    forward(child.stdout, process.stdout);
+    forward(child.stderr, process.stderr);
+    child.once("error", reject);
+    child.once("exit", (code, signal) => {
+      children.delete(name);
+      if (code === 0) resolvePromise();
+      else {
+        const details = output.trim();
+        reject(new Error(`${name} a échoué (${signal ?? `code ${code ?? "inconnu"}`})${details ? `\n${details}` : ""}`));
+      }
+    });
+  });
+}
+
 function waitForExit(name, child) {
   return new Promise((resolvePromise) => {
     child.once("exit", (code, signal) => resolvePromise({ name, code, signal }));
@@ -156,7 +186,7 @@ async function main() {
     ensureEsbuildExecutable()
   ]);
   await runOnce("database-migration", "packages/database", "prisma", "prisma", ["migrate", "deploy"]);
-  await runOnce("database-seed", "packages/database", "tsx", "tsx", ["prisma/seed.ts"]);
+  await runNodeOnce("database-seed", "scripts/hostinger-seed.mjs");
 
   const worker = await startProcess("worker", "apps/worker", "tsx", "tsx", ["src/index.ts"]);
   const workerExit = waitForExit("worker", worker);
