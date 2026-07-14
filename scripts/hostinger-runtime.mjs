@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import console from "node:console";
-import { readFile } from "node:fs/promises";
+import { chmod, readdir, readFile } from "node:fs/promises";
+import { createServer, request as createProxyRequest } from "node:http";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 import process from "node:process";
@@ -10,6 +11,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const children = new Map();
 let stopping = false;
+let proxyServer;
 
 async function resolvePackageBin(packageDirectory, packageName, binName) {
   const require = createRequire(resolve(packageDirectory, "package.json"));
@@ -53,6 +55,43 @@ function waitForExit(name, child) {
   });
 }
 
+async function ensurePrismaSchemaEngineExecutable() {
+  const databaseDirectory = resolve(projectRoot, "packages/database");
+  const databaseRequire = createRequire(resolve(databaseDirectory, "package.json"));
+  const prismaPackageJson = databaseRequire.resolve("prisma/package.json");
+  const prismaRequire = createRequire(prismaPackageJson);
+  const enginesDirectory = dirname(prismaRequire.resolve("@prisma/engines/package.json"));
+  const engineNames = (await readdir(enginesDirectory)).filter((name) => name.startsWith("schema-engine-"));
+
+  await Promise.all(engineNames.map((name) => chmod(resolve(enginesDirectory, name), 0o755)));
+}
+
+function startProxyServer(port, upstreamPort) {
+  return new Promise((resolvePromise, reject) => {
+    const server = createServer((request, response) => {
+      const upstream = createProxyRequest({
+        hostname: "127.0.0.1",
+        port: upstreamPort,
+        path: request.url,
+        method: request.method,
+        headers: request.headers
+      }, (upstreamResponse) => {
+        response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers);
+        upstreamResponse.pipe(response);
+      });
+
+      upstream.once("error", () => {
+        if (!response.headersSent) response.writeHead(503, { "content-type": "text/plain; charset=utf-8" });
+        response.end("Application en cours de démarrage");
+      });
+      request.pipe(upstream);
+    });
+
+    server.once("error", reject);
+    server.listen(port, "0.0.0.0", () => resolvePromise(server));
+  });
+}
+
 async function stopChildren(signal = "SIGTERM") {
   if (stopping) return;
   stopping = true;
@@ -67,14 +106,26 @@ async function stopChildren(signal = "SIGTERM") {
       resolvePromise();
     }, 10_000).unref();
   })));
+  if (proxyServer) {
+    proxyServer.closeAllConnections?.();
+    await new Promise((resolvePromise) => proxyServer.close(resolvePromise));
+    proxyServer = undefined;
+  }
 }
 
 async function main() {
-  // Hostinger exige qu'un serveur écoute le port en moins de trois secondes.
-  // Le web démarre donc avant les opérations idempotentes de préparation de la base.
-  const web = await startProcess("web", "apps/web", "next", "next", ["start"]);
+  // Hostinger détecte uniquement listen() dans le processus d'entrée. Ce proxy
+  // ouvre immédiatement le port public et relaie ensuite vers le serveur Next.
+  const publicPort = Number.parseInt(process.env.PORT ?? "3000", 10);
+  const upstreamPort = publicPort === 3001 ? 3002 : 3001;
+  proxyServer = await startProxyServer(publicPort, upstreamPort);
+
+  const web = await startProcess("web", "apps/web", "next", "next", [
+    "start", "--hostname", "127.0.0.1", "--port", String(upstreamPort)
+  ]);
   const webExit = waitForExit("web", web);
 
+  await ensurePrismaSchemaEngineExecutable();
   await runOnce("database-migration", "packages/database", "prisma", "prisma", ["migrate", "deploy"]);
   await runOnce("database-seed", "packages/database", "tsx", "tsx", ["prisma/seed.ts"]);
 
