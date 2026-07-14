@@ -1,5 +1,5 @@
-import { db } from "@wp-agent-studio/database";
-import { PgBoss, fromPrisma, type Queue, type WorkOptions } from "pg-boss";
+import { createPostgresConnectionOptions } from "@wp-agent-studio/database";
+import { PgBoss, type Queue, type WorkOptions } from "pg-boss";
 
 export const WORKFLOW_QUEUE_NAME = "agent-runs";
 export type JobQueue = PgBoss;
@@ -41,8 +41,9 @@ export function createJobQueue(options: {
   onWarning?: (warning: unknown) => void;
   supervise?: boolean;
 }) {
+  const connectionString = process.env.DATABASE_URL ?? "postgresql://wpagent:wpagent@localhost:5432/wpagent";
   const boss = new PgBoss({
-    db: fromPrisma(db),
+    ...createPostgresConnectionOptions(connectionString),
     schema: resolveQueueSchema(),
     supervise: options.supervise ?? true,
     schedule: false,

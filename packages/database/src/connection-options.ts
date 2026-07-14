@@ -1,6 +1,4 @@
-import type { PoolConfig } from "pg";
-
-export function createPostgresConnectionOptions(connectionString: string): PoolConfig {
+export function createPostgresConnectionOptions(connectionString: string): { connectionString: string } {
   const rejectUnauthorized = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED !== "false";
 
   if (rejectUnauthorized) return { connectionString };
