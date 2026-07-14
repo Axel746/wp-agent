@@ -193,12 +193,14 @@ async function main() {
   ]);
   const webExit = waitForExit("web", web);
 
-  await Promise.all([
-    ensurePrismaSchemaEngineExecutable(),
-    ensureEsbuildExecutable()
-  ]);
-  await runOnce("database-migration", "packages/database", "prisma", "prisma", ["migrate", "deploy"]);
-  await runNodeOnce("database-seed", "scripts/hostinger-seed.mjs");
+  await ensureEsbuildExecutable();
+  if (process.env.DATABASE_BOOTSTRAP_ON_START !== "false") {
+    await ensurePrismaSchemaEngineExecutable();
+    await runOnce("database-migration", "packages/database", "prisma", "prisma", ["migrate", "deploy"]);
+    await runNodeOnce("database-seed", "scripts/hostinger-seed.mjs");
+  } else {
+    console.info("[hostinger_runtime] migration et initialisation automatiques désactivées");
+  }
 
   const worker = await startProcess("worker", "apps/worker", "tsx", "tsx", ["src/index.ts"], ["ignore", "pipe", "pipe"]);
   const workerExit = waitForExit("worker", worker, true);
