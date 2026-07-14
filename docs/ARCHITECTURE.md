@@ -3,9 +3,8 @@
 ```mermaid
 flowchart LR
     U["Utilisateur"] --> W["Next.js Web + API"]
-    W --> P[("PostgreSQL")]
-    W --> R[("Redis / BullMQ")]
-    R --> K["Worker hôte"]
+    W --> P[("PostgreSQL métier + pg-boss")]
+    P --> K["Worker hôte"]
     K --> O["Orchestrateur explicite"]
     O --> C["Claude provider"]
     O --> X["Codex provider"]
@@ -43,4 +42,4 @@ stateDiagram-v2
     STAGING_DEPLOYMENT --> FAILED
 ```
 
-Chaque transition vérifie une version optimiste, écrit un `AuditLog` et accepte un rejeu idempotent vers le même état. `JobLock` garantit une seule mutation active par projet et expire automatiquement.
+Chaque transition vérifie une version optimiste, écrit un `AuditLog` et accepte un rejeu idempotent vers le même état. pg-boss utilise un schéma PostgreSQL séparé, des retries exponentiels, un heartbeat et une clé singleton par run. `JobLock` garantit en plus une seule mutation active par projet et expire automatiquement.

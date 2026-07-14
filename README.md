@@ -8,7 +8,7 @@ Le mode par défaut `AGENT_MODE=mock` exécute un workflow déterministe sans ap
 
 - Node.js 22.12 ou 24 LTS et Git ;
 - pnpm 11.7+ ;
-- Docker Desktop avec Compose pour PostgreSQL, Redis, MariaDB et WordPress ;
+- Docker Desktop avec Compose pour PostgreSQL, MariaDB et WordPress ;
 - 4 Go de mémoire disponible pour les conteneurs.
 
 ## Démarrage local
@@ -16,7 +16,7 @@ Le mode par défaut `AGENT_MODE=mock` exécute un workflow déterministe sans ap
 ```text
 copy .env.example .env
 pnpm install
-docker compose up -d postgres redis mariadb wordpress
+docker compose up -d postgres mariadb wordpress
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
@@ -63,8 +63,9 @@ Passez `AGENT_MODE=real`, puis définissez `ANTHROPIC_API_KEY`, `CLAUDE_MODEL` e
 
 ```text
 apps/web                 Interface Next.js, API, SSE et tests Playwright
-apps/worker              Worker BullMQ, verrou projet et persistance du workflow
+apps/worker              Worker pg-boss, verrou projet et persistance du workflow
 packages/database        Prisma 7, migration et seed
+packages/job-queue       File PostgreSQL pg-boss, retries, heartbeat et idempotence
 packages/shared          Contrats Zod et erreurs normalisées
 packages/security        AES-256-GCM, RBAC, CSRF, SSRF, redaction, commandes
 packages/wordpress       REST, Docker local, thème de blocs et ZIP

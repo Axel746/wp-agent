@@ -22,4 +22,4 @@ Le contenu WordPress est marqué non fiable, séparé du contexte système et ne
 
 La garde de commande refuse les opérateurs shell et n’accepte qu’une liste fixe d’opérations WP‑CLI. Le plugin compagnon expose santé, capacités et journal, avec `permission_callback`. Il n’écrit aucun fichier et n’exécute aucun PHP ou processus arbitraire.
 
-En production, remplacez les identifiants de démonstration, utilisez un gestionnaire de secrets, terminez TLS devant Next.js, limitez l’accès Redis/PostgreSQL au réseau privé et sauvegardez les volumes.
+En production, remplacez les identifiants de démonstration, utilisez un gestionnaire de secrets, terminez TLS devant Next.js, limitez l’accès PostgreSQL au réseau privé et sauvegardez les volumes. Le rôle PostgreSQL doit pouvoir gérer le schéma `PG_BOSS_SCHEMA`, sans recevoir de privilèges superutilisateur.

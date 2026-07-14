@@ -54,7 +54,8 @@ export function validateRuntimeConfiguration(
   if (!production) return { issues, warnings };
 
   validateUrl(env, "DATABASE_URL", ["postgres:", "postgresql:"], issues);
-  const redisUrl = validateUrl(env, "REDIS_URL", ["redis:", "rediss:"], issues);
+  const queueSchema = env.PG_BOSS_SCHEMA ?? "pgboss";
+  if (!/^[a-z][a-z0-9_]{0,62}$/.test(queueSchema)) issues.push("PG_BOSS_SCHEMA doit être un identifiant PostgreSQL sûr");
 
   if (!env.ARTIFACTS_DIR?.trim()) issues.push("ARTIFACTS_DIR est requis");
 
@@ -83,9 +84,6 @@ export function validateRuntimeConfiguration(
     }
   }
 
-  if (redisUrl?.protocol === "redis:" && !["localhost", "127.0.0.1", "::1"].includes(redisUrl.hostname)) {
-    warnings.push("REDIS_URL distant devrait utiliser TLS avec rediss://");
-  }
   if (env.ENABLE_PRIVATE_NETWORK_TARGETS === "true") warnings.push("Les cibles réseau privées sont activées");
   if (env.ENABLE_REMOTE_DEPLOYMENT === "true") warnings.push("Le déploiement distant est activé");
 

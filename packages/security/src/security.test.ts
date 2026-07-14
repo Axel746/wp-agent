@@ -13,7 +13,6 @@ describe("sécurité", () => {
     const result = validateRuntimeConfiguration({
       NODE_ENV: "production",
       DATABASE_URL: "postgresql://user:password@database.example.test/app",
-      REDIS_URL: "rediss://default:password@redis.example.test:6380",
       APP_URL: "https://studio.example.test",
       AUTH_SECRET: "replace-with-at-least-32-random-characters",
       ENCRYPTION_KEY: Buffer.alloc(32).toString("base64"),
@@ -26,7 +25,6 @@ describe("sécurité", () => {
     const result = validateRuntimeConfiguration({
       NODE_ENV: "production",
       DATABASE_URL: "postgresql://user:password@database.example.test/app?sslmode=require",
-      REDIS_URL: "rediss://default:password@redis.example.test:6380",
       APP_URL: "https://studio.example.test",
       AUTH_SECRET: "a-secure-auth-secret-with-more-than-32-characters",
       ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
@@ -40,5 +38,18 @@ describe("sécurité", () => {
     expect(result.issues).toEqual([]);
     expect(JSON.stringify(result)).not.toContain("secret-openai-value");
     expect(JSON.stringify(result)).not.toContain("secret-anthropic-value");
+  });
+  it("n’exige plus Redis en production", () => {
+    const result = validateRuntimeConfiguration({
+      NODE_ENV: "production",
+      DATABASE_URL: "postgresql://user:password@database.example.test/app",
+      APP_URL: "https://studio.example.test",
+      AUTH_SECRET: "a-secure-auth-secret-with-more-than-32-characters",
+      ENCRYPTION_KEY: Buffer.alloc(32, 7).toString("base64"),
+      ARTIFACTS_DIR: "/data/artifacts",
+      AGENT_MODE: "mock",
+      PG_BOSS_SCHEMA: "wpas_jobs"
+    }, { service: "all" });
+    expect(result.issues).toEqual([]);
   });
 });

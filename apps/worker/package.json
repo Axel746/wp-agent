@@ -12,12 +12,12 @@
   "dependencies": {
     "@wp-agent-studio/agent-providers": "workspace:*",
     "@wp-agent-studio/database": "workspace:*",
+    "@wp-agent-studio/job-queue": "workspace:*",
     "@wp-agent-studio/observability": "workspace:*",
     "@wp-agent-studio/orchestrator": "workspace:*",
     "@wp-agent-studio/security": "workspace:*",
     "@wp-agent-studio/shared": "workspace:*",
     "@wp-agent-studio/wordpress": "workspace:*",
-    "bullmq": "5.80.2",
     "playwright": "1.61.1",
     "tsx": "^4.20.0"
   },
