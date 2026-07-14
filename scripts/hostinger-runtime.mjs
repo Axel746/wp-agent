@@ -23,13 +23,13 @@ async function resolvePackageBin(packageDirectory, packageName, binName) {
   return resolve(dirname(packageJsonPath), bin);
 }
 
-async function startProcess(name, packagePath, packageName, binName, args) {
+async function startProcess(name, packagePath, packageName, binName, args, stdio = "inherit") {
   const cwd = resolve(projectRoot, packagePath);
   const binary = await resolvePackageBin(cwd, packageName, binName);
   const child = spawn(process.execPath, [binary, ...args], {
     cwd,
     env: process.env,
-    stdio: "inherit",
+    stdio,
     windowsHide: true
   });
   children.set(name, child);
@@ -38,12 +38,24 @@ async function startProcess(name, packagePath, packageName, binName, args) {
 
 function runOnce(name, packagePath, packageName, binName, args) {
   return new Promise((resolvePromise, reject) => {
-    startProcess(name, packagePath, packageName, binName, args).then((child) => {
+    startProcess(name, packagePath, packageName, binName, args, ["ignore", "pipe", "pipe"]).then((child) => {
+      let output = "";
+      const forward = (stream, destination) => stream?.on("data", (chunk) => {
+        const text = chunk.toString();
+        output = `${output}${text}`.slice(-4_000);
+        destination.write(text);
+      });
+
+      forward(child.stdout, process.stdout);
+      forward(child.stderr, process.stderr);
       child.once("error", reject);
       child.once("exit", (code, signal) => {
         children.delete(name);
         if (code === 0) resolvePromise();
-        else reject(new Error(`${name} a échoué (${signal ?? `code ${code ?? "inconnu"}`})`));
+        else {
+          const details = output.trim();
+          reject(new Error(`${name} a échoué (${signal ?? `code ${code ?? "inconnu"}`})${details ? `\n${details}` : ""}`));
+        }
       });
     }).catch(reject);
   });
