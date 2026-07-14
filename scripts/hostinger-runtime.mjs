@@ -47,6 +47,12 @@ function runOnce(name, packagePath, packageName, binName, args) {
   });
 }
 
+function waitForExit(name, child) {
+  return new Promise((resolvePromise) => {
+    child.once("exit", (code, signal) => resolvePromise({ name, code, signal }));
+  });
+}
+
 async function stopChildren(signal = "SIGTERM") {
   if (stopping) return;
   stopping = true;
@@ -64,17 +70,20 @@ async function stopChildren(signal = "SIGTERM") {
 }
 
 async function main() {
+  // Hostinger exige qu'un serveur écoute le port en moins de trois secondes.
+  // Le web démarre donc avant les opérations idempotentes de préparation de la base.
+  const web = await startProcess("web", "apps/web", "next", "next", ["start"]);
+  const webExit = waitForExit("web", web);
+
   await runOnce("database-migration", "packages/database", "prisma", "prisma", ["migrate", "deploy"]);
   await runOnce("database-seed", "packages/database", "tsx", "tsx", ["prisma/seed.ts"]);
 
-  const [web, worker] = await Promise.all([
-    startProcess("web", "apps/web", "next", "next", ["start"]),
-    startProcess("worker", "apps/worker", "tsx", "tsx", ["src/index.ts"])
-  ]);
+  const worker = await startProcess("worker", "apps/worker", "tsx", "tsx", ["src/index.ts"]);
+  const workerExit = waitForExit("worker", worker);
 
   const firstExit = await Promise.race([
-    new Promise((resolvePromise) => web.once("exit", (code, signal) => resolvePromise({ name: "web", code, signal }))),
-    new Promise((resolvePromise) => worker.once("exit", (code, signal) => resolvePromise({ name: "worker", code, signal })))
+    webExit,
+    workerExit
   ]);
 
   if (!stopping) {
