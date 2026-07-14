@@ -10,10 +10,10 @@ Le déploiement devra exposer uniquement l’application web derrière HTTPS. Po
 
 ## Hébergement Web ou Cloud géré
 
-Hostinger prend en charge Next.js, pnpm et Node.js 24 depuis un dépôt GitHub. La file pg-boss réutilise PostgreSQL et supprime le besoin d’un service Redis. Cette topologie exige encore :
+Hostinger prend en charge Next.js, pnpm et Node.js 24 depuis un dépôt GitHub. La file pg-boss réutilise PostgreSQL et supprime le besoin d’un service Redis. Pour le faible volume du MVP, le lanceur `scripts/hostinger-runtime.mjs` exécute le web et le worker dans la même Web App. Cette topologie exige encore :
 
 - un PostgreSQL externe compatible Prisma, par exemple Supabase ;
-- un worker pg-boss permanent, exécuté dans un processus Node compatible ou sur un service séparé ;
+- un processus Node permanent ; le lanceur Hostinger supervise le web et le worker ensemble ;
 - un stockage d’artefacts persistant partagé entre le web et le worker ;
 - un WordPress de destination distant, car le WordPress Docker local ne peut pas être lancé par l’application gérée.
 
@@ -24,18 +24,21 @@ Ne déployez pas uniquement le web en pensant que les workflows avanceront : san
 Depuis la racine du dépôt :
 
 ```text
+Préréglage : Other
+Branche : branche de livraison validée
 Node.js : 24.x
 Gestionnaire : pnpm
+Répertoire racine : ./
 Commande de build : pnpm hostinger:build
-Commande de démarrage : pnpm hostinger:start
-Port : 3000
+Répertoire de sortie : .
+Fichier d’entrée : scripts/hostinger-runtime.mjs
 Sonde de vie : /api/health/live
 Sonde de disponibilité : /api/health
 ```
 
-`pnpm hostinger:build` génère le client Prisma et construit uniquement l’application web. Le worker doit être construit et lancé séparément avec `pnpm --filter @wp-agent-studio/worker build` puis `pnpm --filter @wp-agent-studio/worker start`.
+`pnpm hostinger:build` génère le client Prisma et construit le web ainsi que le worker. Au démarrage, le lanceur applique les migrations, initialise le compte administrateur de façon idempotente, puis garde Next.js et le worker pg-boss actifs. Si l’un des deux processus tombe, l’application est arrêtée afin que Hostinger puisse la redémarrer proprement.
 
-Exécutez `pnpm db:migrate` comme étape contrôlée avant le premier démarrage et lors des versions contenant une migration. Une migration ne doit pas être cachée dans le démarrage normal de l’application.
+Le pack Web App ne fournit pas de commande de release séparée : `pnpm db:migrate` et `pnpm db:seed` sont donc exécutés avant les deux processus à chaque démarrage. Ces opérations sont idempotentes ; un échec empêche l’application de démarrer avec un schéma incohérent.
 
 ## Variables et vérification préalable
 
