@@ -78,6 +78,20 @@ async function ensurePrismaSchemaEngineExecutable() {
   await Promise.all(engineNames.map((name) => chmod(resolve(enginesDirectory, name), 0o755)));
 }
 
+async function ensureEsbuildExecutable() {
+  const databaseDirectory = resolve(projectRoot, "packages/database");
+  const databaseRequire = createRequire(resolve(databaseDirectory, "package.json"));
+  const tsxPackageJson = databaseRequire.resolve("tsx/package.json");
+  const tsxRequire = createRequire(tsxPackageJson);
+  const esbuildPackageJson = tsxRequire.resolve("esbuild/package.json");
+  const esbuildRequire = createRequire(esbuildPackageJson);
+  const platformPackage = `@esbuild/${process.platform}-${process.arch}`;
+  const platformPackageJson = esbuildRequire.resolve(`${platformPackage}/package.json`);
+  const executableName = process.platform === "win32" ? "esbuild.exe" : "esbuild";
+
+  await chmod(resolve(dirname(platformPackageJson), "bin", executableName), 0o755);
+}
+
 function startProxyServer(port, upstreamPort) {
   return new Promise((resolvePromise, reject) => {
     const server = createServer((request, response) => {
@@ -137,7 +151,10 @@ async function main() {
   ]);
   const webExit = waitForExit("web", web);
 
-  await ensurePrismaSchemaEngineExecutable();
+  await Promise.all([
+    ensurePrismaSchemaEngineExecutable(),
+    ensureEsbuildExecutable()
+  ]);
   await runOnce("database-migration", "packages/database", "prisma", "prisma", ["migrate", "deploy"]);
   await runOnce("database-seed", "packages/database", "tsx", "tsx", ["prisma/seed.ts"]);
 
